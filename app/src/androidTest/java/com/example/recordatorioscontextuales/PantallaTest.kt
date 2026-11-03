@@ -9,6 +9,7 @@ class PantallaTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun muestraLosDatosYPermiteDesplazarse() {
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Comprar alimentos").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Mis recordatorios").assertIsDisplayed()
         compose.onNodeWithText("Comprar alimentos").assertIsDisplayed()
         compose.onNodeWithText("Categoría: Personal").assertIsDisplayed()
@@ -18,6 +19,7 @@ class PantallaTest {
         compose.onNodeWithText("Reunión de equipo").assertIsDisplayed()
     }
     @Test fun filtraPorEstadoYPrioridad() {
+        compose.waitUntil(10_000) { compose.onAllNodesWithText("Comprar alimentos").fetchSemanticsNodes().isNotEmpty() }
         compose.onNodeWithText("Pendientes").performClick()
         compose.onNodeWithText("Entregar informe").assertDoesNotExist()
         compose.onNodeWithText("Comprar alimentos").assertIsDisplayed()

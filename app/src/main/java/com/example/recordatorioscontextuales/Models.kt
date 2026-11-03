@@ -18,11 +18,6 @@ sealed class EstadoRecordatorio(val etiqueta: String) {
     object EnCurso : EstadoRecordatorio("En curso")
     object Completado : EstadoRecordatorio("Completado")
 }
-sealed class EstadoAplicacion {
-    object Cargando : EstadoAplicacion()
-    object Lista : EstadoAplicacion()
-    data class Error(val mensaje: String) : EstadoAplicacion()
-}
 data class Ubicacion(
     val latitud: Double,
     val longitud: Double,
@@ -47,7 +42,8 @@ data class Recordatorio(
 ) {
     init {
         require(id > 0) { "El identificador debe ser positivo" }
-        require(titulo.isNotBlank()) { "El título es obligatorio" }
+        require(titulo.trim().length >= 4) { "El título debe tener al menos 4 caracteres" }
+        require(descripcion.length <= 200) { "La descripción no puede superar 200 caracteres" }
         require(aviso == null || fechaVencimiento == null ||
             !aviso.isAfter(fechaVencimiento)) {
             "El aviso no puede ser posterior al vencimiento"
