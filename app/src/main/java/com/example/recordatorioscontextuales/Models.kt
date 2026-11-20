@@ -38,7 +38,9 @@ data class Recordatorio(
     val fechaVencimiento: LocalDateTime? = null,
     val ubicacion: Ubicacion? = null,
     val aviso: LocalDateTime? = null,
-    val sincronizado: Boolean = false
+    val sincronizado: Boolean = false,
+    val fechaCreacion: LocalDateTime = LocalDateTime.now(),
+    val estadoSincronizacion: String = "Pendiente"
 ) {
     init {
         require(id > 0) { "El identificador debe ser positivo" }

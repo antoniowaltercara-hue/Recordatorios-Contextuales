@@ -8,3 +8,6 @@ local.properties
 /captures/
 .externalNativeBuild/
 .cxx/
+tools/datos_servidor.json
+tools/datos_servidor.tmp
+tools/__pycache__/

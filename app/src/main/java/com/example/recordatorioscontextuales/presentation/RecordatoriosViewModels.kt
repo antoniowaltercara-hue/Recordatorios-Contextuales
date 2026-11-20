@@ -60,13 +60,29 @@ class ListadoViewModel(private val repository: RecordatoriosRepository) : ViewMo
     }
 }
 
-class CreacionViewModel(private val repository: RecordatoriosRepository) : ViewModel() {
+class CreacionViewModel(private val repository: RecordatoriosRepository, private val id: Int? = null) : ViewModel() {
     private val mutableState = MutableStateFlow(CreacionUiState())
     val uiState: StateFlow<CreacionUiState> = mutableState.asStateFlow()
     private var envio: Job? = null
+    init {
+        if (id != null) {
+            mutableState.update { it.copy(editando = true, cargando = true) }
+            viewModelScope.launch {
+                try {
+                    val r = requireNotNull(repository.obtenerPorId(id))
+                    mutableState.value = CreacionUiState(r.titulo, r.descripcion, r.categoria, r.prioridad,
+                        ValidadorFormulario.validar(r.titulo, r.descripcion, r.categoria, r.prioridad),
+                        estado = r.estado, editando = true)
+                } catch (e: Exception) {
+                    if (e is CancellationException) throw e
+                    mutableState.update { it.copy(cargando = false, resultado = ResultadoGuardado.Error("No se pudo abrir el registro para editar.")) }
+                }
+            }
+        }
+    }
 
     private fun cambiar(transformar: (CreacionUiState) -> CreacionUiState) {
-        if (mutableState.value.enviando) return
+        if (mutableState.value.enviando || mutableState.value.cargando) return
         mutableState.update {
             val nuevo = transformar(it)
             nuevo.copy(errores = ValidadorFormulario.validar(nuevo.titulo, nuevo.descripcion, nuevo.categoria, nuevo.prioridad),
@@ -78,6 +94,7 @@ class CreacionViewModel(private val repository: RecordatoriosRepository) : ViewM
     fun categoria(valor: Categoria) = cambiar { it.copy(categoria = valor) }
     fun prioridad(valor: Prioridad) = cambiar { it.copy(prioridad = valor) }
     fun simularError(valor: Boolean) = cambiar { it.copy(simularError = valor) }
+    fun estado(valor: EstadoRecordatorio) = cambiar { it.copy(estado = valor) }
 
     fun guardar() {
         val actual = mutableState.value
@@ -85,8 +102,9 @@ class CreacionViewModel(private val repository: RecordatoriosRepository) : ViewM
         mutableState.update { it.copy(resultado = ResultadoGuardado.Enviando) }
         envio = viewModelScope.launch {
             try {
-                val creado = repository.guardar(NuevoRecordatorio(actual.titulo, actual.descripcion,
-                    requireNotNull(actual.categoria), requireNotNull(actual.prioridad)), actual.simularError)
+                val datos = NuevoRecordatorio(actual.titulo, actual.descripcion,
+                    requireNotNull(actual.categoria), requireNotNull(actual.prioridad), actual.estado)
+                val creado = if (id == null) repository.guardar(datos, actual.simularError) else repository.actualizar(id, datos)
                 mutableState.update { it.copy(resultado = ResultadoGuardado.Exito(creado.id)) }
             } catch (cancelada: CancellationException) { throw cancelada
             } catch (_: Exception) {
@@ -109,10 +127,12 @@ class DetalleViewModel(private val repository: RecordatoriosRepository, private 
         mutableState.update { DetalleUiState.Cargando }
         carga = viewModelScope.launch {
             try {
-                val registro = repository.obtenerPorId(id)
-                mutableState.update { if (registro == null) DetalleUiState.Error("El recordatorio no existe.") else DetalleUiState.Datos(registro) }
+                repository.observarPorId(id).collect { registro ->
+                    mutableState.update { if (registro == null) DetalleUiState.Error("El recordatorio no existe.") else DetalleUiState.Datos(registro) }
+                }
             } catch (cancelada: CancellationException) { throw cancelada
             } catch (_: Exception) { mutableState.update { DetalleUiState.Error("No se pudo abrir el recordatorio.") } }
         }
     }
+    suspend fun eliminar() = repository.eliminar(id)
 }

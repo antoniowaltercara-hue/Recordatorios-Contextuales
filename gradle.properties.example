@@ -1,0 +1,5 @@
+# Agregar esta línea a gradle.properties o usar -PAPI_BASE_URL=... al compilar.
+# El lanzador del servidor configura adb reverse para acceder al puerto local.
+API_BASE_URL=http://127.0.0.1:8765/
+# Alternativa sin USB: IP local de la PC y servidor con --host 0.0.0.0.
+# HTTP se permite solo en debug. En distribución se debe usar un servidor HTTPS.

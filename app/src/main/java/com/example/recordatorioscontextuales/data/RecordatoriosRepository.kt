@@ -4,6 +4,8 @@ import com.example.recordatorioscontextuales.*
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -14,7 +16,8 @@ data class NuevoRecordatorio(
     val titulo: String,
     val descripcion: String,
     val categoria: Categoria,
-    val prioridad: Prioridad
+    val prioridad: Prioridad,
+    val estado: EstadoRecordatorio = EstadoRecordatorio.Pendiente
 )
 
 interface RecordatoriosRepository {
@@ -22,6 +25,9 @@ interface RecordatoriosRepository {
     suspend fun obtener(escenario: Escenario = Escenario.Datos): List<Recordatorio>
     suspend fun obtenerPorId(id: Int): Recordatorio?
     suspend fun guardar(nuevo: NuevoRecordatorio, simularError: Boolean = false): Recordatorio
+    suspend fun actualizar(id: Int, nuevo: NuevoRecordatorio): Recordatorio = error("Actualización no disponible")
+    suspend fun eliminar(id: Int) { error("Eliminación no disponible") }
+    fun observarPorId(id: Int): Flow<Recordatorio?> = flow { emit(obtenerPorId(id)) }
 }
 
 class InMemoryRecordatoriosRepository(

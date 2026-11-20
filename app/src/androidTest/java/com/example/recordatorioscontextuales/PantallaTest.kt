@@ -9,7 +9,8 @@ class PantallaTest {
     @get:Rule val compose = createAndroidComposeRule<MainActivity>()
 
     @Test fun muestraLosDatosYPermiteDesplazarse() {
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Comprar alimentos").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("lista").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("lista").performScrollToNode(hasText("Comprar alimentos"))
         compose.onNodeWithText("Mis recordatorios").assertIsDisplayed()
         compose.onNodeWithText("Comprar alimentos").assertIsDisplayed()
         compose.onNodeWithText("Categoría: Personal").assertIsDisplayed()
@@ -19,8 +20,10 @@ class PantallaTest {
         compose.onNodeWithText("Reunión de equipo").assertIsDisplayed()
     }
     @Test fun filtraPorEstadoYPrioridad() {
-        compose.waitUntil(10_000) { compose.onAllNodesWithText("Comprar alimentos").fetchSemanticsNodes().isNotEmpty() }
+        compose.waitUntil(10_000) { compose.onAllNodesWithTag("lista").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("lista").performScrollToNode(hasText("Comprar alimentos"))
         compose.onNodeWithText("Pendientes").performClick()
+        compose.onNodeWithTag("lista").performScrollToNode(hasText("Comprar alimentos"))
         compose.onNodeWithText("Entregar informe").assertDoesNotExist()
         compose.onNodeWithText("Comprar alimentos").assertIsDisplayed()
         compose.onNodeWithText("Alta prioridad").performClick()
@@ -28,6 +31,7 @@ class PantallaTest {
         compose.onNodeWithText("Entregar informe").assertIsDisplayed()
         compose.onNodeWithText("Turno médico").assertIsDisplayed()
         compose.onNodeWithText("Todos").performClick()
+        compose.onNodeWithTag("lista").performScrollToNode(hasText("Comprar alimentos"))
         compose.onNodeWithText("Comprar alimentos").assertIsDisplayed()
     }
 }

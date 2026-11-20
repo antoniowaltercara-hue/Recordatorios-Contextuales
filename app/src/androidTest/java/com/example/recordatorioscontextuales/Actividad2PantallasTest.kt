@@ -14,7 +14,10 @@ class Actividad2PantallasTest {
     private fun esperar(texto: String) {
         compose.waitUntil(12_000) { compose.onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty() }
     }
-    private fun inicio() = esperar("Comprar alimentos")
+    private fun inicio() {
+        compose.waitUntil(12_000) { compose.onAllNodesWithTag("lista").fetchSemanticsNodes().isNotEmpty() }
+        compose.onNodeWithTag("lista").performScrollToNode(hasText("Comprar alimentos"))
+    }
     private fun captura(nombre: String) {
         compose.waitForIdle()
         val instrumentation = InstrumentationRegistry.getInstrumentation()

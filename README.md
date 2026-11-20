@@ -1,53 +1,80 @@
 # Recordatorios contextuales
 
-Aplicación de Programación Mobile desarrollada con Kotlin, Jetpack Compose y Material 3.
-La versión 2 continúa la Actividad 1 e incorpora navegación, formularios y arquitectura de presentación.
+Aplicación de Antonio Walter Cara para Programación Mobile. La versión 3.0 continúa las actividades 1 y 2 en el mismo proyecto y repositorio.
 
-## Abrir y ejecutar
-Abrir esta carpeta con Android Studio y sincronizar Gradle. Usar el JDK integrado de Android Studio y tener instalado Android SDK 37. Seleccionar un emulador Android API 28 o superior y ejecutar la configuración app.
+## Abrir, compilar e instalar
 
-## Organización
-- `Models.kt`: modelos inmutables y validaciones; `ReminderData.kt`: ejemplos y colecciones de la primera actividad.
-- `data/RecordatoriosRepository.kt`: contrato de datos e implementación en memoria compartida durante la sesión.
-- `presentation/UiState.kt`: estados tipados, filtros y validación del formulario.
-- `presentation/RecordatoriosViewModels.kt`: ViewModel de listado, creación y detalle; StateFlow de solo lectura y tareas en viewModelScope.
-- `ui/Componentes.kt`: tarjeta, campos controlados, selectores y mensajes de estado reutilizables.
-- `ui/Pantallas.kt`: listado, creación y detalle, con Material 3 e innerPadding de Scaffold.
-- `ui/RecordatoriosNavHost.kt`: rutas `listado`, `crear` y `detalle/{id}`. Solo se transporta un identificador entero.
-- `RecordatoriosApplication.kt`: instancia compartida del repositorio. Los ViewModel solo reciben su interfaz.
+1. Abrir la carpeta raíz del proyecto en Android Studio y sincronizar Gradle.
+2. Usar el JDK integrado, Android SDK 37 y un emulador o teléfono con API 28 o superior.
+3. Ejecutar la configuración `app`. Se crea una base Room y se insertan los cinco ejemplos solo la primera vez.
+4. Para compilar desde Windows: `gradlew.bat assembleDebug`.
+5. El APK de prueba queda en `app/build/outputs/apk/debug/app-debug.apk`.
 
-## Usar la versión 2
+## Iniciar el servicio simulado
 
-El botón `+` abre el formulario. El título requiere 4 caracteres después de trim;
-la descripción admite hasta 200; categoría y prioridad son obligatorias. Guardar se
-deshabilita si el formulario es inválido o está enviando. Cancelar descarta la operación,
-incluso durante la demora simulada. Cada tarjeta abre el detalle. Guardar y cancelar
-usan popBackStack para volver sin duplicar el listado.
+Se necesita Python 3, sin paquetes adicionales. Desde la raíz del proyecto:
 
-`Simular estados` muestra los botones Datos, Carga, Vacío y Error. La carga dura
-aproximadamente 2,8 segundos y vuelve a los datos. Vacío no elimina los registros;
-Datos restaura la vista normal. Error muestra Reintentar, que vuelve a cargar los datos.
-El formulario permite activar `Simular error de guardado`; desactivarlo permite reintentar
-sin perder los campos. La creación normal tarda aproximadamente 1,4 segundos.
+```cmd
+py tools/servidor_demo.py
+```
 
-Los ViewModel se conservan ante la recreación de Activity y la interfaz observa sus
-flujos con collectAsStateWithLifecycle. El repositorio vive solo en memoria: al finalizar
-el proceso se recuperan los cinco ejemplos, sin conservar los registros creados.
+También se puede abrir `tools/iniciar_servidor.bat`. Mantener la terminal del servidor abierta. El servicio guarda sus registros en `tools/datos_servidor.json`, excluido de Git.
 
-## Capturas para la Actividad 2
+El lanzador configura `adb reverse tcp:8765 tcp:8765` con el emulador o teléfono USB conectado. Iniciar el dispositivo antes que el servidor. La URL predeterminada es `http://127.0.0.1:8765/`. El ejemplo `gradle.properties.example` muestra cómo configurar `API_BASE_URL`. Agregar esa propiedad a `gradle.properties`, sincronizar y compilar. La URL debe terminar con `/`.
 
-1. Listado normal con título, categoría, prioridad y estado.
-2. Formulario: `+`, completar título y descripción y seleccionar categoría y prioridad.
-3. Detalle: seleccionar `Turno médico` para mostrar también los campos opcionales.
-4. Vacío: `Simular estados` → `Vacío`.
-5. Error y reintento: `Simular estados` → `Error`.
-6. Estructura: expandir app/src/main, data, presentation, ui y Gradle Scripts en Android Studio.
+Un teléfono USB puede usar el mismo túnel ADB. Como alternativa sin USB, configurar la IP local de la PC y ejecutar el servidor con `--host 0.0.0.0`; requiere conectividad local y permiso de acceso al puerto. En el emulador también puede configurarse la dirección habitual 10.0.2.2 si la red del equipo lo permite. No hay usuarios, contraseñas ni tokens. HTTP está permitido solo en debug; una distribución real requiere HTTPS.
 
-Las simulaciones son herramientas de comprobación, no fallos de red reales.
+## Funciones de la versión 3
 
-## Comprobaciones
-`gradlew.bat assembleDebug testDebugUnitTest`
+- Listado, creación, detalle, edición y eliminación. Se mantienen los modelos y las validaciones anteriores.
+- Las tres preferencias se abren desde **Ajustes**: tema oscuro, mostrar completados y orden por fecha, título o prioridad.
+- Room conserva los registros al cerrar el proceso. DataStore guarda las preferencias. Solo borrar los datos de la app o desinstalar elimina esos archivos.
+- Cada tarjeta y detalle muestra Pendiente, Sincronizado o Error.
+- **Simular sin conexión** permite probar el trabajo local sin depender del servicio. No borra registros y se desactiva al iniciar otra sesión.
+- **Sincronizar ahora** vuelve a intentar el envío. También se intenta al iniciar el proceso y cuando Android informa que hay red. No se utiliza WorkManager: con el proceso cerrado, los cambios esperan a la siguiente apertura.
+- La eliminación se guarda como una marca local hasta que el servicio la confirma. Se oculta inmediatamente del listado.
 
-Con un emulador abierto: `gradlew.bat connectedDebugAndroidTest`.
+## Capas y sincronización
 
-Los datos son simulados. No se solicitan permisos ni se implementan persistencia, nube o notificaciones en esta segunda actividad.
+`ui` presenta pantallas; `presentation` mantiene los estados y eventos. `data/local` contiene entidad, DAO, base Room y DataStore; `data/remote` contiene DTO, Retrofit y OkHttp. `Mapeos.kt` transforma entidad, DTO y dominio. `LocalFirstRepository` implementa el contrato que reciben los ViewModel.
+
+El flujo principal es Compose → ViewModel → repositorio → Room → Flow → pantalla. El repositorio complementa Room con Retrofit → servicio → DTO validado → Room. La interfaz no lee directamente de la red.
+
+Cada registro tiene un ID local y un UUID remoto único. Se usa PUT sobre ese UUID, no POST en cada reintento. Un Mutex impide sincronizaciones simultáneas. El número de revisión evita confirmar una edición con una respuesta anterior. Los DTO inválidos se rechazan antes de escribirlos; el índice único evita duplicados importados.
+
+La demo contempla un único usuario/dispositivo. Un conflicto HTTP 409 conserva el cambio local y requiere resolver el dato antes de reintentar; no se implementa una combinación automática de cambios de varios dispositivos.
+
+## Comprobar errores del servicio
+
+Abrir en el navegador de la PC:
+
+- `http://127.0.0.1:8765/control?modo=500`: error del servidor.
+- `http://127.0.0.1:8765/control?modo=400`: solicitud inválida.
+- `http://127.0.0.1:8765/control?modo=timeout`: demora de 6 segundos, mayor al timeout de lectura del cliente.
+- `http://127.0.0.1:8765/control?modo=normal`: restablecer el servicio normal.
+- `http://127.0.0.1:8765/estado`: cantidad de registros remotos y modo actual.
+- `http://127.0.0.1:8765/recordatorios`: registros recibidos por el servicio.
+
+Después de cambiar el modo, tocar **Sincronizar ahora** en Ajustes. Un fallo conserva la información local y ofrece reintento. Repetir la sincronización normal no aumenta la cantidad de registros.
+
+## Preferencias predeterminadas y lectura inválida
+
+Sin preferencias guardadas se aplica tema claro, completados visibles y orden por fecha. Un valor de orden desconocido o una clave con un tipo incorrecto usa su valor predeterminado. Un IOException de lectura produce preferencias predeterminadas; la corrupción del archivo usa ReplaceFileCorruptionHandler. No se guardan recordatorios ni secretos en DataStore.
+
+## Pruebas
+
+```cmd
+gradlew.bat testDebugUnitTest
+gradlew.bat connectedDebugAndroidTest
+py -m unittest discover -s tools -p test_servidor.py
+```
+
+Las pruebas locales cubren validaciones y mapeos. Las instrumentadas prueban Room, DataStore, CRUD, reapertura, filtros, timeout, HTTP 400 y 500, DTO inválido, envío concurrente, edición durante el envío, eliminación pendiente y las pantallas de la versión anterior.
+
+## Capturas para el informe
+
+El Word y el PDF de `entregas/actividad3` dejan zonas numeradas y pasos para obtener cada evidencia. Completar las imágenes en Word y exportar nuevamente el PDF antes de entregar. Ambos informes tienen un enlace clickeable al repositorio. La consigna también solicita un ZIP del proyecto.
+
+## Alcance
+
+No se implementan mapas, notificaciones, autenticación real, cifrado adicional ni sincronización de fondo con el proceso detenido. La persistencia local y la sincronización descritas sí pertenecen a esta versión. La clase InMemoryRecordatoriosRepository se conserva para las pruebas históricas de la actividad 2; la aplicación utiliza LocalFirstRepository y Room.

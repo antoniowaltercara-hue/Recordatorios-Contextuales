@@ -21,7 +21,8 @@ import java.time.format.DateTimeFormatter
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun PantallaListado(estado: ListadoUiState, onCrearRecordatorio: () -> Unit, onRecordatorioClick: (Int) -> Unit,
-    onReintentar: () -> Unit, onFiltro: (Filtro) -> Unit, onSimular: (Escenario) -> Unit, modifier: Modifier = Modifier) {
+    onReintentar: () -> Unit, onFiltro: (Filtro) -> Unit, onSimular: (Escenario) -> Unit, modifier: Modifier = Modifier,
+    onAjustes: () -> Unit = {}) {
     var simulacionVisible by rememberSaveable { mutableStateOf(false) }
     val lista = rememberLazyListState()
     val filtro = when (estado) {
@@ -30,14 +31,15 @@ fun PantallaListado(estado: ListadoUiState, onCrearRecordatorio: () -> Unit, onR
         else -> Filtro.Todos
     }
     LaunchedEffect(filtro) { lista.scrollToItem(0) }
-    Scaffold(modifier = modifier, topBar = { TopAppBar(title = { Text("Mis recordatorios") }) },
+    Scaffold(modifier = modifier, topBar = { TopAppBar(title = { Text("Mis recordatorios") },
+        actions = { TextButton(onClick = onAjustes) { Text("Ajustes") } }) },
         floatingActionButton = {
             FloatingActionButton(onClick = onCrearRecordatorio, modifier = Modifier.semantics { contentDescription = "Crear recordatorio" }) {
                 Text("+", style = MaterialTheme.typography.headlineMedium)
             }
         }) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).padding(horizontal = 16.dp)) {
-            Text("Actividad 2 · Programación Mobile", style = MaterialTheme.typography.bodySmall)
+            Text("Actividad 3 · Guardado local y sincronización", style = MaterialTheme.typography.bodySmall)
             TextButton(onClick = { simulacionVisible = !simulacionVisible }) { Text(if (simulacionVisible) "Ocultar simulación" else "Simular estados") }
             if (simulacionVisible) {
                 Text("Pruebas en memoria. Vacío no borra los datos.", style = MaterialTheme.typography.bodySmall)
@@ -82,9 +84,10 @@ fun PantallaListado(estado: ListadoUiState, onCrearRecordatorio: () -> Unit, onR
 fun PantallaCreacion(estado: CreacionUiState, onTitulo: (String) -> Unit, onDescripcion: (String) -> Unit,
     onCategoria: (com.example.recordatorioscontextuales.Categoria) -> Unit,
     onPrioridad: (com.example.recordatorioscontextuales.Prioridad) -> Unit,
-    onGuardar: () -> Unit, onCancelar: () -> Unit, onSimularError: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    onGuardar: () -> Unit, onCancelar: () -> Unit, onSimularError: (Boolean) -> Unit, modifier: Modifier = Modifier,
+    onEstado: (com.example.recordatorioscontextuales.EstadoRecordatorio) -> Unit = {}) {
     Scaffold(modifier = modifier, topBar = {
-        TopAppBar(title = { Text("Nuevo recordatorio") }, navigationIcon = { TextButton(onClick = onCancelar) { Text("Volver") } })
+        TopAppBar(title = { Text(if (estado.editando) "Editar recordatorio" else "Nuevo recordatorio") }, navigationIcon = { TextButton(onClick = onCancelar) { Text("Volver") } })
     }) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -97,6 +100,11 @@ fun PantallaCreacion(estado: CreacionUiState, onTitulo: (String) -> Unit, onDesc
                 { it.etiqueta }, estado.errores.categoria, habilitado = !estado.enviando)
             SelectorOpciones("Prioridad", prioridadesPermitidas, estado.prioridad, onPrioridad,
                 { it.etiqueta }, estado.errores.prioridad, habilitado = !estado.enviando)
+            if (estado.editando) SelectorOpciones("Estado", listOf(
+                com.example.recordatorioscontextuales.EstadoRecordatorio.Pendiente,
+                com.example.recordatorioscontextuales.EstadoRecordatorio.EnCurso,
+                com.example.recordatorioscontextuales.EstadoRecordatorio.Completado), estado.estado,
+                onEstado, { it.etiqueta }, null, habilitado = !estado.enviando)
             Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
                 Checkbox(checked = estado.simularError, onCheckedChange = onSimularError,
                     enabled = !estado.enviando, modifier = Modifier.semantics { contentDescription = "Simular error de guardado" })
@@ -115,20 +123,27 @@ fun PantallaCreacion(estado: CreacionUiState, onTitulo: (String) -> Unit, onDesc
             Button(onClick = onGuardar, enabled = estado.puedeGuardar,
                 modifier = Modifier.fillMaxWidth().testTag("guardar")) { Text(if (estado.enviando) "Guardando…" else "Guardar") }
             OutlinedButton(onClick = onCancelar, modifier = Modifier.fillMaxWidth()) { Text("Cancelar") }
-            Text("Los datos se conservan solo durante esta sesión.", style = MaterialTheme.typography.bodySmall)
+            Text("Los datos quedan guardados en el dispositivo, incluso sin conexión.", style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PantallaDetalle(estado: DetalleUiState, onVolver: () -> Unit, onReintentar: () -> Unit, modifier: Modifier = Modifier) {
+fun PantallaDetalle(estado: DetalleUiState, onVolver: () -> Unit, onReintentar: () -> Unit, modifier: Modifier = Modifier,
+    onEditar: () -> Unit = {}, onEliminar: () -> Unit = {}, mensaje: String? = null) {
     val formato = remember { DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm") }
+    var confirmarEliminacion by remember { mutableStateOf(false) }
+    if (confirmarEliminacion) AlertDialog(onDismissRequest = { confirmarEliminacion = false },
+        title = { Text("Eliminar recordatorio") }, text = { Text("El registro se ocultará del listado y la eliminación se sincronizará cuando haya conexión.") },
+        confirmButton = { TextButton(onClick = { confirmarEliminacion = false; onEliminar() }) { Text("Confirmar eliminación") } },
+        dismissButton = { TextButton(onClick = { confirmarEliminacion = false }) { Text("Cancelar") } })
     Scaffold(modifier = modifier, topBar = {
         TopAppBar(title = { Text("Detalle del recordatorio") }, navigationIcon = { TextButton(onClick = onVolver) { Text("Volver") } })
     }) { innerPadding ->
         Column(Modifier.fillMaxSize().padding(innerPadding).verticalScroll(rememberScrollState()).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (mensaje != null) Text(mensaje, color = MaterialTheme.colorScheme.error)
             when (estado) {
                 DetalleUiState.Cargando -> MensajeEstado(TipoMensaje.Carga, "Cargando detalle…")
                 is DetalleUiState.Error -> MensajeEstado(TipoMensaje.Error, estado.mensaje, accion = "Reintentar", onAccion = onReintentar)
@@ -145,8 +160,14 @@ fun PantallaDetalle(estado: DetalleUiState, onVolver: () -> Unit, onReintentar: 
                     Text("Ubicación: ${r.ubicacion?.let { "${it.descripcion ?: "Sin nombre"} (${it.latitud}, ${it.longitud})" } ?: "Sin ubicación"}")
                     Text("Aviso: ${r.aviso?.format(formato) ?: "Sin aviso"}")
                     Text("Sincronizado: ${if (r.sincronizado) "Sí" else "No"}")
-                    Text("Ubicación, avisos y sincronización son datos del modelo. Sus servicios se incorporarán en módulos posteriores.",
+                    Text("Sincronización: ${r.estadoSincronizacion}")
+                    Text("Creado: ${r.fechaCreacion.format(formato)}")
+                    Text("Ubicación y avisos siguen siendo datos del modelo; todavía no se activan mapas ni notificaciones.",
                         style = MaterialTheme.typography.bodySmall)
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Button(onClick = onEditar) { Text("Editar") }
+                        OutlinedButton(onClick = { confirmarEliminacion = true }) { Text("Eliminar") }
+                    }
                     Button(onClick = onVolver) { Text("Volver al listado") }
                 }
             }

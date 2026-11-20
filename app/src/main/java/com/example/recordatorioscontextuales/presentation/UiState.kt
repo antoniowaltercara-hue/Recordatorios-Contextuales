@@ -42,10 +42,13 @@ data class CreacionUiState(
     val categoria: Categoria? = null, val prioridad: Prioridad? = null,
     val errores: ErroresFormulario = ValidadorFormulario.validar("", "", null, null),
     val resultado: ResultadoGuardado = ResultadoGuardado.SinEnviar,
-    val simularError: Boolean = false
+    val simularError: Boolean = false,
+    val estado: EstadoRecordatorio = EstadoRecordatorio.Pendiente,
+    val editando: Boolean = false,
+    val cargando: Boolean = false
 ) {
     val enviando: Boolean get() = resultado is ResultadoGuardado.Enviando
-    val puedeGuardar: Boolean get() = errores.esValido && !enviando && resultado !is ResultadoGuardado.Exito
+    val puedeGuardar: Boolean get() = errores.esValido && !enviando && !cargando && resultado !is ResultadoGuardado.Exito
 }
 
 sealed interface DetalleUiState {

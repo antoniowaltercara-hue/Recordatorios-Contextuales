@@ -21,6 +21,7 @@ fun RecordatorioCard(recordatorio: Recordatorio, onSeleccionar: () -> Unit, modi
             Text("Categoría: ${estilo.first}", color = estilo.second)
             Text("Prioridad: ${recordatorio.prioridad.etiqueta}")
             Text("Estado: ${recordatorio.estado.etiqueta}")
+            Text("Sincronización: ${recordatorio.estadoSincronizacion}", style = MaterialTheme.typography.bodySmall)
             Text("Ver detalle", style = MaterialTheme.typography.labelMedium)
         }
     }
